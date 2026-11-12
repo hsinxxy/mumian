@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>木棉記帳本・財經俱樂部</title>
+<style>
+:root{--y:#ffd54a;--b:#4aa8ff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+#sky{position:fixed;inset:0;width:100%;height:100%}
+.stage{position:fixed;inset:0;perspective:360px;overflow:hidden}
+.intro,.title{position:absolute;inset:0;display:grid;place-items:center;text-align:center;opacity:0;padding:24px}
+.intro p{margin:0;max-width:560px;color:var(--b);font-size:clamp(20px,3.6vw,30px);line-height:1.8;letter-spacing:.08em}
+.title div{color:var(--y);font-weight:900;font-size:clamp(54px,15vw,150px);letter-spacing:.12em;line-height:1.1;text-shadow:0 0 24px rgba(255,213,74,.35)}
+.title small{display:block;font-size:.22em;letter-spacing:.7em;margin-top:.5em;font-weight:700}
+.crawl{position:absolute;left:50%;top:100%;width:min(88vw,720px);color:var(--y);font-weight:700;font-size:clamp(20px,3.4vw,32px);line-height:1.75;text-align:justify;transform:translateX(-50%) rotateX(26deg);transform-origin:50% 100%}
+.crawl h2{text-align:center;margin:0 0 .3em;font-size:1.15em;letter-spacing:.3em}
+.crawl h3{text-align:center;margin:0 0 1.6em;font-size:1.5em;letter-spacing:.15em}
+.crawl p{margin:0 0 1.3em;text-indent:2em}
+.fade{position:fixed;left:0;right:0;top:0;height:34vh;background:linear-gradient(#000 12%,transparent);pointer-events:none}
+.play .intro{animation:intro 5.4s ease-in-out forwards}
+.play .title{animation:title 8s ease-out 5.8s forwards}
+.play .crawl{animation:crawl 70s linear 11.5s forwards}
+@keyframes intro{0%{opacity:0}20%,80%{opacity:1}100%{opacity:0}}
+@keyframes title{0%{transform:scale(2.6);opacity:0}8%{opacity:1}55%{opacity:1}100%{transform:scale(.04);opacity:0}}
+@keyframes crawl{to{transform:translateX(-50%) rotateX(26deg) translateY(calc(-100vh - 125%))}}
+#skip{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));background:none;border:1px solid #555;color:#aaa;border-radius:20px;padding:6px 16px;font:inherit;font-size:14px;cursor:pointer;z-index:5}
+#skip:hover{color:#fff;border-color:#fff}
+.cta{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;pointer-events:none;transition:opacity 1.2s;z-index:4;padding:24px;text-align:center}
+.cta.on{opacity:1;pointer-events:auto}
+.cta h1{margin:0 0 6px;color:var(--y);font-size:clamp(40px,10vw,84px);letter-spacing:.12em;text-shadow:0 0 24px rgba(255,213,74,.35)}
+.cta p{margin:0 0 14px;color:#cdbf8c;letter-spacing:.3em}
+.cta a,.cta button{display:block;width:min(300px,80vw);padding:13px 20px;border-radius:10px;border:2px solid var(--y);background:rgba(0,0,0,.6);color:var(--y);font:inherit;font-size:18px;font-weight:700;letter-spacing:.15em;text-decoration:none;cursor:pointer}
+.cta a:hover,.cta button:hover{background:var(--y);color:#000}
+.cta button.re{border-color:#555;color:#aaa;font-size:14px;padding:8px}
+/* 減少動態效果：直接顯示靜態文字 */
+body.static{overflow:auto}
+body.static .stage{position:relative;perspective:none;overflow:visible;padding:40px 0 0}
+body.static .intro,body.static .title,body.static .fade,body.static #skip{display:none}
+body.static .crawl{position:relative;top:0;left:auto;margin:0 auto;transform:none}
+body.static .cta{position:relative;opacity:1;pointer-events:auto;padding:30px 24px 60px}
+</style></head><body>
+<canvas id="sky"></canvas>
+<div class="stage play" id="stage">
+ <div class="intro"><p>很久很久以前，<br>在一間叫做「木棉」的教室裡……</p></div>
+ <div class="title"><div>木棉記帳本<small>財經俱樂部</small></div></div>
+ <div class="crawl">
+  <h2>第一集</h2><h3>薪水小偷的威脅</h3>
+  <p>木棉教室裡，一間神祕的公司悄悄成立了。這裡沒有老闆，只有四個部門：營運部、財管部、產品部、行政部。每一位同學，都是公司裡不可或缺的員工。</p>
+  <p>每一天，薪水都會準時入帳：作業繳交 40 元、準時出席 30 元、環境衛生 30 元。每一週，還有 80 元的工作薪資，依照每個人的工作表現發放。</p>
+  <p>然而，傳說中的「薪水小偷」正在暗處徘徊。只要有人偷懶、遲到、弄亂了教室，辛苦賺來的薪水就會不翼而飛……</p>
+  <p>只有誠實記帳、用心理財的人，才能守住自己的財富，成為財經俱樂部裡最閃亮的傳奇。</p>
+  <p>現在，翻開記帳本，你的冒險即將開始……</p>
+ </div>
+</div>
+<div class="fade"></div>
+<button id="skip" onclick="showCta()">略過動畫 ▶▶</button>
+<div class="cta" id="cta">
+ <h1>木棉記帳本</h1><p>財經俱樂部</p>
+ <a href="student.html">🎒 學生查帳</a>
+ <a href="ledger.html">👩‍🏫 老師入口</a>
+ <button class="re" onclick="replay()">↻ 重播開場</button>
+</div>
+<script>
+const stage=document.getElementById('stage'),cta=document.getElementById('cta');let timer=0;
+function showCta(){clearTimeout(timer);stage.classList.remove('play');document.getElementById('skip').style.display='none';cta.classList.add('on')}
+function replay(){cta.classList.remove('on');document.getElementById('skip').style.display='';stage.classList.remove('play');void stage.offsetWidth;stage.classList.add('play');timer=setTimeout(showCta,83000)}
+if(matchMedia('(prefers-reduced-motion: reduce)').matches){document.body.classList.add('static');stage.classList.remove('play');cta.classList.add('on')}
+else timer=setTimeout(showCta,83000);
+/* 星空 */
+const cv=document.getElementById('sky'),cx=cv.getContext('2d');let st=[],w,h;
+function size(){w=cv.width=innerWidth;h=cv.height=innerHeight;st=Array.from({length:Math.round(w*h/5000)},()=>({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.3+.2,s:Math.random()*.15+.02,p:Math.random()*6}))}
+function draw(t){cx.clearRect(0,0,w,h);for(const s of st){s.y+=s.s;if(s.y>h)s.y=0;cx.globalAlpha=.45+.45*Math.sin(t/900+s.p);cx.fillStyle='#fff';cx.beginPath();cx.arc(s.x,s.y,s.r,0,6.3);cx.fill()}requestAnimationFrame(draw)}
+addEventListener('resize',size);size();requestAnimationFrame(draw);
+</script></body></html>
