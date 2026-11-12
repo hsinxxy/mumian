@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>木棉班財經俱樂部・記帳本</title>
+<style>
+:root{--bg:#faf8f3;--card:#fff;--tx:#2b2a26;--mut:#7a766b;--bd:#e4dfd2;--pri:#2f7d5b;--pt:#fff;--neg:#c0452f;--pos:#2f7d5b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1b18;--card:#27261f;--tx:#eeebe0;--mut:#a09b8c;--bd:#3d3b31;--pri:#4fb68a;--pt:#10201a;--neg:#ec7c66;--pos:#4fb68a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1c1b18;--card:#27261f;--tx:#eeebe0;--mut:#a09b8c;--bd:#3d3b31;--pri:#4fb68a;--pt:#10201a;--neg:#ec7c66;--pos:#4fb68a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+header{padding:16px 16px 0;max-width:980px;margin:auto}
+h1{font-size:20px;margin:0 0 10px}
+nav{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--bd)}
+nav button{background:none;border:0;padding:8px 12px;color:var(--mut);font:inherit;cursor:pointer;border-bottom:3px solid transparent}
+nav button.on{color:var(--tx);border-color:var(--pri);font-weight:700}
+main{max-width:980px;margin:auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+input,select,textarea{width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+input[type=checkbox]{width:20px;height:20px;padding:0}
+textarea{min-height:90px}
+button.b{background:var(--pri);color:var(--pt);border:0;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+button.g{background:none;border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:7px 12px;font:inherit;cursor:pointer}
+button.sm{padding:2px 6px;font-size:11px;margin:2px 2px 0 0}
+button.x{background:none;border:0;color:var(--neg);cursor:pointer;font-size:18px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px}
+.days{display:flex;gap:6px;flex-wrap:wrap}
+.sc{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+th{font-size:12px;color:var(--mut);font-weight:600;vertical-align:bottom}
+td input[type=text],td input[type=number],td select{padding:4px 6px}
+.r{text-align:right}.pos{color:var(--pos)}.neg{color:var(--neg)}
+.stat{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px}.stat b{font-size:20px;display:block}
+.m{color:var(--mut);font-size:13px}
+#dlg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:20;padding:20px}#dlg .bx{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px;max-width:340px;width:100%}#dlg p{margin:0 0 6px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:8px 16px;border-radius:20px;display:none;z-index:9}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head><body>
+<header><h1>🪙 木棉班財經俱樂部・記帳本</h1><nav id="nav"></nav></header>
+<main id="app"></main><div id="toast"></div><div id="dlg"></div>
+<script>
+const KEY='mumian-ledger-v2',$=i=>document.getElementById(i);
+const DEF={students:[],daily:{},weekly:{},tx:[],off:{'2027-01-01':1},start:'2026-11-16',weeks:10,base:80,rate:{a:40,p:30,e:30},dept:['營運部','財管部','產品部','行政部']};
+const ITEMS=[['a','作業繳交',1],['p','準時出席',2],['e','環境衛生',4]],WD=['週一','週二','週三','週四','週五'];
+let S=load(),tab='day',W=1,D=0,F='',viewSid=null,sortBy='no';
+function load(){try{const j=localStorage.getItem(KEY);if(j){const o=Object.assign({},DEF,JSON.parse(j)),r=o.rate||{};if(r.a==10&&r.p==10&&r.e==10)o.rate={a:40,p:30,e:30};for(const k in o.daily){const m=o.daily[k];if(typeof m==='number'){const x={};ITEMS.forEach(([c,,b])=>{if(m&b)x[c]=+o.rate[c]});o.daily[k]=x}}return o}}catch(e){}return JSON.parse(JSON.stringify(DEF))}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('無法儲存到瀏覽器，請到「設定」備份')}}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const n0=n=>Number(n).toLocaleString('en-US'),uid=()=>'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const add=(s,n)=>{const[y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d+n)).toISOString().slice(0,10)};
+const dd=(w,d)=>add(S.start,(w-1)*7+d),md=s=>`${+s.slice(5,7)}/${+s.slice(8)}`;
+const todayS=()=>{const d=new Date();return add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,0)};
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',2400)}
+const sorted=()=>[...S.students].sort((a,b)=>(+a.no||999)-(+b.no||999));
+const nm=s=>s?(s.no?s.no+' ':'')+(s.name||'?'):'(已刪除)';
+const opts=(a,sel)=>a.map(v=>`<option ${v===sel?'selected':''}>${esc(v)}</option>`).join('');
+const earn=m=>m?(+m.a||0)+(+m.p||0)+(+m.e||0):0;
+const ss=()=>sorted().filter(s=>!F||s.dept===F);
+const deptSel=fn=>`<select onchange="F=this.value;${fn}()"><option value="">全部部門</option>${opts(S.dept,F)}</select>`;
+const weekSel=fn=>`<select onchange="W=+this.value;${fn}()">${Array.from({length:S.weeks},(_,i)=>`<option value="${i+1}" ${i+1===W?'selected':''}>第${i+1}週（${md(dd(i+1,0))}–${md(dd(i+1,4))}）</option>`).join('')}</select>`;
+function wkDaily(id,w){let t=0;for(let d=0;d<5;d++){const dt=dd(w,d);if(!S.off[dt])t+=earn(S.daily[id+'|'+dt]||0)}return t}
+function calc(){const m={},g=id=>m[id]||(m[id]={d:0,w:0,x:0,s:0});
+ for(const k in S.daily){const[id,dt]=k.split('|');if(!S.off[dt])g(id).d+=earn(S.daily[k])}
+ for(const k in S.weekly)g(k.split('|')[0]).w+=+S.weekly[k];
+ S.tx.forEach(t=>t.kind==='spend'?g(t.sid).s+=t.amt:g(t.sid).x+=t.amt);return m}
+
+const TABS={day:'✅ 每日登記',wk:'💼 每週薪資',over:'📊 總覽',spend:'🛒 消費紀錄',roster:'👥 學生名單',set:'⚙️ 設定'};
+function render(){$('nav').innerHTML=Object.entries(TABS).map(([k,v])=>`<button class="${k===tab?'on':''}" onclick="tab='${k}';render()">${v}</button>`).join('');({day:vDay,wk:vWk,over:vOver,spend:vSpend,roster:vRoster,set:vSet})[tab]()}
+
+/* 每日登記 */
+function vDay(){const date=dd(W,D);
+ $('app').innerHTML=`<div class="card"><div class="row" style="margin:0 0 10px"><div>${'<label>週次</label>'+weekSel('vDay')}</div><div><label>部門</label>${deptSel('rt')}</div></div>
+ <div class="days">${WD.map((n,i)=>`<button class="${i===D?'b':'g'}" onclick="D=${i};vDay()">${n} ${md(dd(W,i))}</button>`).join('')}</div>
+ <label style="margin-top:10px;display:flex;gap:6px;align-items:center"><input type="checkbox" ${S.off[date]?'checked':''} onchange="setOff(this.checked)"> 這天放假／不登記（不計薪）</label></div><div class="card sc" id="tb"></div>`;rt()}
+function setOff(c){const d=dd(W,D);c?S.off[d]=1:delete S.off[d];save();rt()}
+function rt(){const date=dd(W,D),el=$('tb');if(!el)return;
+ if(S.off[date]){el.innerHTML='<p class="m">這天已標記為放假，不計薪。</p>';return}
+ const L=ss();if(!L.length){el.innerHTML='<p class="m">沒有學生，請先到「學生名單」匯入。</p>';return}
+ el.innerHTML=`<table><tr><th>座號</th><th>姓名</th><th>部門</th>${ITEMS.map(([k,n])=>`<th>${n}（${S.rate[k]}）<br><button class="g sm" onclick="allD('${k}',1)">全選</button><button class="g sm" onclick="allD('${k}',0)">清除</button><br><input type="number" id="h_${k}" placeholder="自訂" style="width:62px;padding:3px"><button class="g sm" onclick="allC('${k}')">套用</button></th>`).join('')}<th class="r">今日薪資</th></tr>`+
+ L.map(s=>{const m=S.daily[s.id+'|'+date]||0;return`<tr><td>${esc(s.no)}</td><td>${esc(s.name)}</td><td>${esc(s.dept)||'—'}</td>${ITEMS.map(([k])=>`<td><input type="checkbox" id="c_${s.id}_${k}" ${m[k]&&m[k]==S.rate[k]?'checked':''} onchange="tg('${s.id}','${k}',this.checked)"> <input type="number" id="v_${s.id}_${k}" style="width:62px" value="${m[k]||''}" placeholder="0" onchange="setAmt('${s.id}','${k}',this.value)"></td>`).join('')}<td class="r"><b id="t_${s.id}">${earn(m)}</b></td></tr>`}).join('')+'</table>'}
+function setAmt(id,k,v){const key=id+'|'+dd(W,D),m=S.daily[key]||(S.daily[key]={});v=parseFloat(v);if(v>0)m[k]=v;else delete m[k];if(!Object.keys(m).length)delete S.daily[key];save();const c=$('c_'+id+'_'+k),i=$('v_'+id+'_'+k),t=$('t_'+id);if(c)c.checked=v==S.rate[k];if(i)i.value=v>0?v:'';if(t)t.textContent=earn(S.daily[key])}
+function allC(k){const v=parseFloat($('h_'+k).value);if(!(v>=0))return toast('請輸入金額');ss().forEach(s=>setAmt(s.id,k,v))}
+function tg(id,k,c){setAmt(id,k,c?S.rate[k]:0)}
+function allD(k,c){ss().forEach(s=>setAmt(s.id,k,c?S.rate[k]:0))}
+
+/* 每週薪資 */
+function vWk(){$('app').innerHTML=`<div class="card"><div class="row" style="margin:0 0 8px"><div><label>週次</label>${weekSel('vWk')}</div><div><label>部門</label>${deptSel('rw')}</div></div>
+ <p class="m">每週工作薪資預設 ${S.base} 元，可依每位學生的工作狀況單獨調整（留空＝尚未發放）。</p>
+ <div class="row" style="margin-top:0"><button class="b" onclick="fillW(0)">尚未發放者設為 ${S.base}</button><button class="g" onclick="ask('目前篩選的學生，本週工作薪資全部設為 ${S.base}？會覆蓋個別調整。',()=>fillW(1))">全部設為 ${S.base}</button><button class="g" onclick="ask('目前篩選的學生，本週工作薪資全部設為 0？會覆蓋個別調整。',()=>fillW(2))">全部設為 0</button></div></div><div class="card sc" id="tb"></div>`;rw()}
+function fillW(m){ss().forEach(s=>{const k=s.id+'|'+W;if(m===2)S.weekly[k]=0;else if(m||S.weekly[k]===undefined)S.weekly[k]=S.base});save();rw()}
+function rw(){const el=$('tb');if(!el)return;
+ el.innerHTML=`<table><tr><th>座號</th><th>姓名</th><th>部門</th><th class="r">本週日薪</th><th>工作薪資</th><th class="r">本週合計</th></tr>`+ss().map(s=>{const k=s.id+'|'+W,v=S.weekly[k],d=wkDaily(s.id,W);return`<tr><td>${esc(s.no)}</td><td>${esc(s.name)}</td><td>${esc(s.dept)||'—'}</td><td class="r">${d}</td><td><input type="number" style="width:90px" value="${v??''}" placeholder="${S.base}" onchange="setW('${k}',this.value)"></td><td class="r"><b>${d+(+v||0)}</b></td></tr>`}).join('')+'</table>'}
+function setW(k,v){v===''?delete S.weekly[k]:S.weekly[k]=+v;save();rw()}
+
+/* 總覽 */
+function vOver(){const T=calc(),L=ss(),bal=s=>{const t=T[s.id]||{d:0,w:0,x:0,s:0};return t.d+t.w+t.x+t.s};
+ if(sortBy==='bal')L.sort((a,b)=>bal(b)-bal(a));
+ const tot=L.reduce((a,s)=>a+bal(s),0);
+ $('app').innerHTML=`<div class="card"><div class="stat"><div><span class="m">人數</span><b>${L.length}</b></div><div><span class="m">總餘額</span><b>${n0(tot)}</b></div></div>
+ <div class="row" style="margin:0 0 8px"><div><label>部門</label>${deptSel('vOver')}</div><div><label>排序</label><select onchange="sortBy=this.value;vOver()"><option value="no">座號</option><option value="bal" ${sortBy==='bal'?'selected':''}>餘額高→低</option></select></div></div>
+ <div class="sc"><table><tr><th>座號</th><th>姓名</th><th>部門</th><th class="r">日薪累計</th><th class="r">週薪累計</th><th class="r">其他加減</th><th class="r">消費</th><th class="r">餘額</th></tr>${L.map(s=>{const t=T[s.id]||{d:0,w:0,x:0};return`<tr style="cursor:pointer" onclick="viewSid='${s.id}';vOver()"><td>${esc(s.no)}</td><td>${esc(s.name)}</td><td>${esc(s.dept)||'—'}</td><td class="r">${n0(t.d)}</td><td class="r">${n0(t.w)}</td><td class="r">${n0(t.x)}</td><td class="r neg">${t.s?n0(-t.s):0}</td><td class="r"><b>${n0(bal(s))}</b></td></tr>`}).join('')||'<tr><td colspan="8" class="m">尚無學生</td></tr>'}</table></div></div>`+pass()}
+function pass(){const s=S.students.find(x=>x.id===viewSid);if(!s)return'<p class="m">點選上表任一學生可查看個人存摺，並登錄其他加減（獎金、罰款、兌換）。</p>';
+ const E=[];for(const k in S.daily){const[id,dt]=k.split('|');if(id===s.id&&!S.off[dt]){const m=S.daily[k];E.push({dt,l:'日薪：'+ITEMS.filter(i=>m[i[0]]).map(i=>i[1]+m[i[0]]).join('、'),a:earn(m)})}}
+ for(const k in S.weekly){const[id,w]=k.split('|');if(id===s.id)E.push({dt:dd(+w,4),l:`第${w}週工作薪資`,a:+S.weekly[k]})}
+ S.tx.filter(t=>t.sid===s.id).forEach(t=>E.push({dt:t.date,l:(t.kind==='spend'?'消費：':'')+(t.note||'其他加減'),a:t.amt,id:t.id}));
+ E.sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:0);let run=0;
+ return`<div class="card"><h2>📒 ${esc(nm(s))} 的存摺</h2><div class="grid"><div><label>日期</label><input type="date" id="x_d" value="${todayS()}"></div><div><label>金額（扣款輸入負數）</label><input type="number" id="x_a" inputmode="decimal"></div><div style="grid-column:span 2"><label>說明</label><input type="text" id="x_n" placeholder="例：額外獎金、罰款、兌換小禮物"></div></div><div class="row"><button class="b" onclick="addX()">登錄</button></div>
+ <div class="sc" style="margin-top:10px"><table><tr><th>日期</th><th>項目</th><th class="r">金額</th><th class="r">餘額</th><th></th></tr>${E.map(e=>{run+=e.a;return`<tr><td>${md(e.dt)}</td><td>${esc(e.l)}</td><td class="r ${e.a<0?'neg':'pos'}">${e.a>0?'+':''}${e.a}</td><td class="r">${n0(run)}</td><td>${e.id?`<button class="x" onclick="delX('${e.id}')">×</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="5" class="m">還沒有紀錄</td></tr>'}</table></div></div>`}
+function addX(){const a=parseFloat($('x_a').value);if(!a)return toast('請輸入金額');S.tx.push({id:uid(),date:$('x_d').value||todayS(),sid:viewSid,amt:a,note:$('x_n').value.trim()});save();vOver()}
+let spF='',spSel='';
+function vSpend(){const by=Object.fromEntries(S.students.map(s=>[s.id,s])),so=sel=>sorted().map(s=>`<option value="${s.id}" ${s.id===sel?'selected':''}>${esc(nm(s))}</option>`).join('');
+ const list=S.tx.filter(t=>t.kind==='spend'&&(!spF||t.sid===spF)).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0),tot=list.reduce((a,t)=>a-t.amt,0);
+ $('app').innerHTML=`<div class="card"><h2>新增消費</h2><div class="grid"><div><label>日期</label><input type="date" id="sp_d" value="${todayS()}"></div><div><label>學生</label><select id="sp_s" onchange="spSel=this.value;spBal()">${so(spSel)}</select></div><div><label>金額</label><input type="number" id="sp_a" min="0" inputmode="decimal"></div><div style="grid-column:span 2"><label>消費項目／說明</label><input type="text" id="sp_n" placeholder="例：兌換貼紙、點心、文具"></div></div><p class="m" id="sp_b"></p><div class="row" style="margin-top:0"><button class="b" onclick="addSp()">登錄消費</button></div></div>
+ <div class="card"><h2>消費紀錄</h2><div class="row" style="margin:0 0 8px"><div><label>篩選學生</label><select onchange="spF=this.value;vSpend()"><option value="">全部</option>${so(spF)}</select></div><div class="stat" style="margin:0"><div><span class="m">${list.length} 筆，合計</span><b class="neg">${n0(tot)}</b></div></div></div>
+ <div class="sc"><table><tr><th>日期</th><th>學生</th><th>項目</th><th class="r">金額</th><th></th></tr>${list.map(t=>`<tr><td>${md(t.date)}</td><td>${esc(nm(by[t.sid]))}</td><td>${esc(t.note)}</td><td class="r neg">${n0(-t.amt)}</td><td><button class="x" onclick="delSp('${t.id}')">×</button></td></tr>`).join('')||'<tr><td colspan="5" class="m">還沒有消費紀錄</td></tr>'}</table></div></div>`;spBal()}
+function balOf(id){const t=calc()[id]||{d:0,w:0,x:0,s:0};return t.d+t.w+t.x+t.s}
+function spBal(){const e=$('sp_s'),b=$('sp_b');if(e&&b&&e.value)b.textContent='目前餘額：'+n0(balOf(e.value))}
+function addSp(){const id=$('sp_s').value,a=parseFloat($('sp_a').value),n=$('sp_n').value.trim();
+ if(!id)return toast('請先建立學生名單');if(!(a>0))return toast('請輸入金額');if(!n)return toast('請輸入消費項目');
+ const b=balOf(id),ok=()=>{S.tx.push({id:uid(),date:$('sp_d').value||todayS(),sid:id,amt:-a,note:n,kind:'spend'});save();vSpend();toast('已登錄')};
+ a>b?ask(`餘額只有 ${n0(b)}，這筆 ${n0(a)} 會讓餘額變成負數，仍要登錄嗎？`,ok):ok()}
+function delSp(id){ask('刪除這筆消費？',()=>{S.tx=S.tx.filter(t=>t.id!==id);save();vSpend()})}
+function ask(m,f){const d=$('dlg');d.innerHTML=`<div class="bx"><p>${esc(m)}</p><div class="row" style="justify-content:flex-end"><button class="g" id="dn">取消</button><button class="b" id="dy">確定</button></div></div>`;d.style.display='flex';$('dn').onclick=()=>d.style.display='none';$('dy').onclick=()=>{d.style.display='none';f()}}
+function delX(id){ask('刪除這筆？',()=>{S.tx=S.tx.filter(t=>t.id!==id);save();vOver()})}
+
+/* 學生名單 */
+function vRoster(){$('app').innerHTML=`<div class="card"><h2>用 Excel 匯入名單</h2><p class="m">Excel 需有「座號、姓名、部門」欄位（有標題列最好，同時有其他欄位也沒關係；若有「學生名單」分頁會優先讀取）。部門須為：${esc(S.dept.join('、'))}，其他會先放「未分配」，可在下表調整。同座號會更新。</p>
+ <div class="row"><div style="flex:1;min-width:220px"><label>選擇 .xlsx／.csv 檔案</label><input type="file" accept=".xlsx,.xls,.csv" onchange="fileS(this)"></div></div>
+ <div class="row"><div style="flex:1;min-width:220px"><label>或直接從 Excel 複製貼上</label><textarea id="paste" placeholder="座號&#9;姓名&#9;部門"></textarea></div></div><div class="row"><button class="b" onclick="impRows($('paste').value.split(/\\r?\\n/).map(l=>l.split(/\\t|,/)))">匯入貼上的內容</button></div></div>
+ <div class="card"><h2>新增單一學生</h2><div class="grid"><div><label>座號</label><input id="n_no" inputmode="numeric"></div><div><label>姓名</label><input id="n_nm"></div><div><label>部門</label><select id="n_d">${opts(S.dept)}</select></div></div><div class="row"><button class="b" onclick="addS()">新增</button></div></div>
+ <div class="card"><h2>目前名單（${S.students.length} 人）</h2><div class="sc"><table><tr><th>座號</th><th>姓名</th><th>部門</th><th></th></tr>${sorted().map(s=>`<tr><td><input type="text" style="width:60px" value="${esc(s.no)}" onchange="upS('${s.id}','no',this.value)"></td><td><input type="text" value="${esc(s.name)}" onchange="upS('${s.id}','name',this.value)"></td><td><select onchange="upS('${s.id}','dept',this.value)"><option value="">未分配</option>${opts(S.dept,s.dept)}</select></td><td><button class="x" onclick="delS('${s.id}')">×</button></td></tr>`).join('')||'<tr><td colspan="4" class="m">尚無學生</td></tr>'}</table></div></div>`}
+function fileS(inp){const f=inp.files[0];if(!f)return;if(typeof XLSX==='undefined')return toast('檔案功能未載入，請改用貼上');
+ const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'}),n=wb.SheetNames.includes('學生名單')?'學生名單':wb.SheetNames[0];impRows(XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''}))}catch(x){toast('無法讀取這個檔案')}};r.readAsArrayBuffer(f)}
+function impRows(rows){rows=rows.map(r=>r.map(c=>String(c??'').trim()));
+ const hi=rows.findIndex(r=>r.includes('姓名'));let iNo=0,iNm=1,iD=2;
+ if(hi>=0){const h=rows[hi];iNo=h.indexOf('座號');iNm=h.indexOf('姓名');iD=h.indexOf('部門')}
+ else if(rows[0]&&rows[0].length>3)iD=3;
+ let a=0,u=0,un=0;
+ rows.slice(hi+1).forEach(r=>{const name=r[iNm];if(!name)return;const no=iNo>=0?(r[iNo]||'').replace(/\.0$/,''):'';let d=iD>=0?r[iD]||'':'';if(!S.dept.includes(d)){d='';un++}
+  const ex=no&&S.students.find(s=>s.no===no);
+  if(ex){ex.name=name;if(d)ex.dept=d;u++}else{S.students.push({id:uid(),no,name,dept:d});a++}});
+ save();render();toast(`新增 ${a} 人、更新 ${u} 人${un?`，${un} 人部門未分配`:''}`)}
+function addS(){const name=$('n_nm').value.trim();if(!name)return toast('請輸入姓名');S.students.push({id:uid(),no:$('n_no').value.trim(),name,dept:$('n_d').value});save();render()}
+function upS(id,k,v){const s=S.students.find(x=>x.id===id);if(s){s[k]=v.trim();save()}}
+function delS(id){ask('刪除此學生及其所有帳目？',()=>delS2(id))}
+function delS2(id){S.students=S.students.filter(s=>s.id!==id);S.tx=S.tx.filter(t=>t.sid!==id);
+ for(const k in S.daily)if(k.startsWith(id+'|'))delete S.daily[k];for(const k in S.weekly)if(k.startsWith(id+'|'))delete S.weekly[k];save();render()}
+
+/* 設定 */
+function vSet(){$('app').innerHTML=`<div class="card"><h2>薪資設定</h2><div class="grid"><div><label>起始日（週一）</label><input type="date" id="s_st" value="${S.start}"></div><div><label>週數</label><input type="number" id="s_wk" value="${S.weeks}"></div><div><label>每週工作薪資（預設）</label><input type="number" id="s_b" value="${S.base}"></div>${ITEMS.map(([k,n])=>`<div><label>每日「${n}」薪資</label><input type="number" id="r_${k}" value="${S.rate[k]}"></div>`).join('')}</div>
+ <div class="row"><div style="flex:1;min-width:240px"><label>部門（用「、」分隔）</label><input type="text" id="s_d" value="${esc(S.dept.join('、'))}"></div></div><div class="row"><button class="b" onclick="saveSet()">儲存設定</button></div></div>
+ <div class="card"><h2>備份與匯出</h2><p class="m">資料存在這台裝置的瀏覽器裡。換電腦或清除瀏覽資料前，請先產生備份文字並存到記事本或雲端文件。</p><textarea id="bk"></textarea>
+ <div class="row"><button class="g" onclick="bkOut()">產生備份文字</button><button class="g" onclick="bkIn()">從備份文字還原</button><button class="g" onclick="sumOut()">產生總表（可貼到 Excel）</button><button class="g" onclick="cp()">複製</button></div></div>
+ <div class="card"><h2>危險區</h2><button class="g" onclick="ask('清空所有薪資與帳目（學生名單保留）？',()=>{S.daily={};S.weekly={};S.tx=[];save();toast('已清空')})">清空所有薪資與帳目</button></div>`}
+function saveSet(){const d=$('s_d').value.split(/[、,，]/).map(x=>x.trim()).filter(Boolean);
+ Object.assign(S,{start:$('s_st').value||S.start,weeks:Math.max(1,+$('s_wk').value||10),base:+$('s_b').value||0,dept:d.length?d:S.dept});
+ ITEMS.forEach(([k])=>S.rate[k]=+$('r_'+k).value||0);save();toast('已儲存')}
+function bkOut(){$('bk').value=JSON.stringify(S);toast('已產生，請複製保存')}
+function bkIn(){try{const o=JSON.parse($('bk').value);if(!Array.isArray(o.students))throw 0;ask('這會覆蓋目前所有資料，確定嗎？',()=>{S=Object.assign({},DEF,o);save();render();toast('已還原')})}catch(e){toast('備份文字格式不正確')}}
+function sumOut(){const T=calc();$('bk').value=['座號\t姓名\t部門\t日薪累計\t週薪累計\t其他加減\t消費\t餘額',...sorted().map(s=>{const t=T[s.id]||{d:0,w:0,x:0,s:0};return[s.no,s.name,s.dept,t.d,t.w,t.x,-t.s,t.d+t.w+t.x+t.s].join('\t')})].join('\n')}
+function cp(){const t=$('bk');t.select();try{navigator.clipboard.writeText(t.value);toast('已複製')}catch(e){toast('已選取，請手動複製')}}
+(function(){const n=Math.floor((Date.parse(todayS())-Date.parse(S.start))/864e5);if(n>=0&&n<S.weeks*7){W=Math.floor(n/7)+1;D=Math.min(n%7,4)}})();
+render();
+</script></body></html>
