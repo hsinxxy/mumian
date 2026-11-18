@@ -177,7 +177,7 @@ function cp(){const t=$('bk');t.select();try{navigator.clipboard.writeText(t.val
 
 /* ===== 雲端同步（Supabase） ===== */
 const CK='mumian-cloud';let C={};try{C=JSON.parse(localStorage.getItem(CK))||{}}catch(e){}
-let cErr=0,cRev=0,cDirty=0,cTimer=0,cBusy=0,cPoll=0;
+let cVerr=0,cErr=0,cRev=0,cDirty=0,cTimer=0,cBusy=0,cPoll=0;
 const cSave=()=>{try{localStorage.setItem(CK,JSON.stringify(C))}catch(e){}},cOn=()=>!!(C.url&&C.key&&C.sess);
 function st(t){const e=$('cst');if(e)e.textContent=t}
 function setSess(j){C.sess={access:j.access_token,refresh:j.refresh_token,exp:Date.now()+j.expires_in*1000};cSave()}
@@ -189,7 +189,7 @@ async function api(path,opt={}){const t=await tok(),r=await fetch(C.url+'/rest/v
 function cloudCard(){const on=cOn();return `<div class="card"><h2>☁️ 雲端同步（多位老師共用＋學生查帳）</h2>`+(on?`<p class="m">已連線：${esc(C.email||'')}。每次修改會自動同步，並更新學生查帳頁。</p><div class="row"><button class="g" onclick="cPull().then(()=>{render();toast('已重新載入')}).catch(e=>toast('失敗：'+e.message))">立即重新載入雲端資料</button><button class="g" onclick="pubNow()">更新學生查帳資料</button><button class="g" onclick="cOut()">登出</button></div>`:`<p class="m">需先完成 Supabase 設定。第一次連線時，雲端若已有資料以雲端為準；雲端是空的，則把這台目前的資料上傳。</p><div class="grid"><div><label>Project URL</label><input type="text" id="c_u" value="${esc(C.url||'')}"></div><div><label>anon public key</label><input type="text" id="c_k" value="${esc(C.key||'')}"></div><div><label>老師 Email</label><input type="text" id="c_e" value="${esc(C.email||'')}"></div><div><label>密碼</label><input type="password" id="c_p"></div></div><div class="row"><button class="b" onclick="cLogin()">連線</button></div>`)+'</div>'}
 async function cLogin(){C.url=$('c_u').value.trim().replace(/\/$/,'');C.key=$('c_k').value.trim();C.email=$('c_e').value.trim();
  try{const r=await fetch(C.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:C.key,'Content-Type':'application/json'},body:JSON.stringify({email:C.email,password:$('c_p').value})});
-  if(!r.ok)throw new Error('帳號或密碼錯誤');setSess(await r.json());await cPull();await pubViews();cStart();render();toast('已連線')}catch(e){toast('連線失敗：'+e.message)}}
+  if(!r.ok)throw new Error('帳號或密碼錯誤');setSess(await r.json());await cPull();pubSoon();cStart();render();toast('已連線')}catch(e){toast('連線失敗：'+e.message)}}
 function cOut(){C.sess=null;cSave();clearInterval(cPoll);st('');render()}
 async function cPull(){const r=await api('ledger?id=eq.1&select=rev,data');
  if(r.length&&((r[0].data.students||[]).length||!S.students.length)){cRev=r[0].rev;S=Object.assign({},DEF,r[0].data);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -198,22 +198,27 @@ async function cPull(){const r=await api('ledger?id=eq.1&select=rev,data');
  st('☁️ 已同步')}
 function ensurePins(){S.students.forEach(s=>{if(!s.pin)s.pin=String(crypto.getRandomValues(new Uint32Array(1))[0]%900000+100000)});try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function cloudDirty(){if(!cOn())return;cDirty=1;st('☁️ 待同步…');clearTimeout(cTimer);cTimer=setTimeout(cPush,900)}
+async function retry(f,n=3){for(let i=0;;i++){try{return await f()}catch(e){if(i>=n-1||/^[45]\d\d /.test(String(e.message)))throw e;await new Promise(r=>setTimeout(r,700*(i+1)))}}}
 async function cPush(){if(cBusy){cTimer=setTimeout(cPush,500);return}cBusy=1;cDirty=0;
- try{ensurePins();const r=await api('ledger?id=eq.1&rev=eq.'+cRev,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({data:S,rev:cRev+1})});
-  if(!r.length){await cPull();render();toast('其他老師剛更新過，已載入最新資料，請確認您的修改是否還在')}
-  else{cRev++;await pubViews();cErr=0;st('☁️ 已同步')}}
- catch(e){st('⚠️ 同步失敗，稍後重試');if(!cErr){cErr=1;toast('同步失敗：'+String(e.message).slice(0,140))}cDirty=1;clearTimeout(cTimer);cTimer=setTimeout(cPush,8000)}finally{cBusy=0}}
+ try{ensurePins();const r=await retry(()=>api('ledger?id=eq.1&rev=eq.'+cRev,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({data:S,rev:cRev+1})}));
+  if(!r.length){await cPull();render();toast('其他老師（或您的另一個視窗）剛更新過，已載入最新資料，請確認您的修改是否還在')}
+  else{cRev++;cErr=0;st('☁️ 已同步');pubSoon()}}
+ catch(e){st('⚠️ '+String(e.message).slice(0,40));if(!cErr){cErr=1;toast('同步失敗：'+String(e.message).slice(0,140))}cDirty=1;clearTimeout(cTimer);cTimer=setTimeout(cPush,8000)}finally{cBusy=0}}
+let pvT=0;function pubSoon(){clearTimeout(pvT);pvT=setTimeout(async()=>{try{await retry(pubViews);cVerr=0}catch(e){if(!cVerr){cVerr=1;toast('學生查帳資料更新失敗：'+String(e.message).slice(0,120))}}},4000)}
 function ents(s){const E=[];for(const k in S.daily){const[id,dt]=k.split('|');if(id===s.id&&!S.off[dt]){const m=S.daily[k];E.push({dt,l:'日薪：'+ITEMS.filter(i=>m[i[0]]).map(i=>i[1]+m[i[0]]).join('、'),a:earn(m)})}}
  for(const k in S.weekly){const[id,w]=k.split('|');if(id===s.id)E.push({dt:dd(+w,4),l:`第${w}週工作薪資`,a:+S.weekly[k]})}
  S.tx.filter(t=>t.sid===s.id).forEach(t=>E.push({dt:t.date,l:catOf(t)+(t.note?'：'+t.note:''),a:t.amt}));
  E.sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:0);let run=0;return E.map(e=>({d:md(e.dt),l:e.l,a:e.a,b:(run+=e.a)})).reverse()}
-async function pubViews(){const T=calc(),L=S.students.filter(s=>s.no&&s.pin);
- const rows=L.map(s=>{const t=T[s.id]||{d:0,w:0,x:0,s:0},e=ents(s);return{no:s.no,pin:s.pin,name:s.name,dept:s.dept||'',balance:t.d+t.w+t.x+t.s,entries:e.slice(0,80),updated:new Date().toISOString()}});
+async function pubViews(){const T=calc(),seen={},dup=[],L=S.students.filter(s=>{if(!s.no||!s.pin)return false;const n=String(s.no).trim();if(seen[n]){dup.push(n);return false}seen[n]=1;return true});
+ if(dup.length)toast('座號重複：'+[...new Set(dup)].join('、')+'，只有第一位能查帳，請修正');
+ const rows=L.map(s=>{const t=T[s.id]||{d:0,w:0,x:0,s:0},e=ents(s);return{no:String(s.no).trim(),pin:s.pin,name:s.name,dept:s.dept||'',balance:t.d+t.w+t.x+t.s,entries:e.slice(0,80),updated:new Date().toISOString()}});
  if(rows.length)await api('student_view',{method:'POST',headers:{Prefer:'resolution=merge-duplicates'},body:JSON.stringify(rows)});
  await api('student_view'+(rows.length?'?no=not.in.('+encodeURIComponent(rows.map(r=>'"'+r.no.replace(/"/g,'')+'"').join(','))+')':'?no=neq.'),{method:'DELETE'})}
 async function pubNow(){try{ensurePins();const r=await api('ledger?id=eq.1&rev=eq.'+cRev,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({data:S,rev:cRev+1})});if(!r.length)throw new Error('雲端資料已被更新，請先按「立即重新載入雲端資料」');cRev++;await pubViews();render();toast('已更新學生查帳資料（'+S.students.filter(s=>s.no&&s.pin).length+' 人）')}catch(e){toast('失敗：'+String(e.message).slice(0,140))}}
-function cStart(){clearInterval(cPoll);cPoll=setInterval(async()=>{if(!cOn()||cDirty||cBusy)return;
- try{const r=await api('ledger?id=eq.1&select=rev');if(r[0]&&r[0].rev>cRev){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;await cPull();render();toast('已載入其他老師的更新')}}catch(e){}},15000)}
+async function pollNow(){if(!cOn()||cDirty||cBusy)return;
+ try{const r=await api('ledger?id=eq.1&select=rev');if(r[0]&&r[0].rev>cRev){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;await cPull();render();toast('已載入其他老師的更新')}}catch(e){}}
+function cStart(){clearInterval(cPoll);cPoll=setInterval(pollNow,10000)}
+if(typeof document.addEventListener==='function')document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollNow()});
 (function(){const n=Math.floor((Date.parse(todayS())-Date.parse(S.start))/864e5);if(n>=0&&n<S.weeks*7){W=Math.floor(n/7)+1;D=Math.min(n%7,4)}})();
 render();if(cOn()){cStart();cPull().then(render).catch(()=>st('⚠️ 無法連線雲端'))}
 </script></body></html>
