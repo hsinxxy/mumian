@@ -19,10 +19,10 @@ table{border-collapse:collapse;width:100%}td{padding:7px 4px;border-bottom:1px s
 const SUPABASE_URL='https://YOUR-PROJECT.supabase.co',ANON_KEY='YOUR-ANON-KEY';
 const $=i=>document.getElementById(i),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),n0=n=>Number(n).toLocaleString('en-US');
 async function go(){const no=$('no').value.trim(),pin=$('pin').value.trim();$('out').innerHTML='';
- if(!no||!pin){$('msg').textContent='請輸入座號和 PIN';return}$('msg').textContent='查詢中…';
- try{const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/student_lookup',{method:'POST',headers:{apikey:ANON_KEY,Authorization:'Bearer '+ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_no:no,p_pin:pin})});
-  if(!r.ok)throw 0;const j=await r.json();if(!j.length){$('msg').textContent='座號或 PIN 不正確';return}
+ if(SUPABASE_URL.includes('YOUR-PROJECT')){$('msg').textContent='網站尚未設定：請把 student.html 最上面的 URL 和 key 換成自己的';return}if(!no||!pin){$('msg').textContent='請輸入座號和 PIN';return}$('msg').textContent='查詢中…';
+ try{const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/student_lookup',{method:'POST',headers:{apikey:ANON_KEY,...(ANON_KEY.startsWith('sb_')?{}:{Authorization:'Bearer '+ANON_KEY}),'Content-Type':'application/json'},body:JSON.stringify({p_no:no,p_pin:pin})});
+  if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,100));const j=await r.json();if(!j.length){$('msg').textContent='座號或 PIN 不正確';return}
   const s=j[0];$('msg').textContent='';
   $('out').innerHTML=`<div class="card"><div class="m">${esc(no)} 號　${esc(s.name)}　${esc(s.dept)}</div><div class="big">${n0(s.balance)} 元</div><div class="m">更新時間：${esc(new Date(s.updated).toLocaleString('zh-TW'))}</div></div><div class="card"><b>最近紀錄</b><table>${(s.entries||[]).map(e=>`<tr><td>${esc(e.d)}</td><td>${esc(e.l)}</td><td class="r ${e.a<0?'neg':'pos'}">${e.a>0?'+':''}${e.a}</td><td class="r m">${n0(e.b)}</td></tr>`).join('')||'<tr><td class="m">還沒有紀錄</td></tr>'}</table></div>`}
- catch(e){$('msg').textContent='查詢失敗，請稍後再試'}}
+ catch(e){$('msg').textContent='查詢失敗：'+(e.message||'請稍後再試')}}
 </script></main></body></html>
