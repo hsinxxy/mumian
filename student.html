@@ -16,7 +16,7 @@ table{border-collapse:collapse;width:100%}td{padding:7px 4px;border-bottom:1px s
 <div class="card"><label>座號</label><input id="no" inputmode="numeric"><label>查帳 PIN（老師給的 6 位數）</label><input id="pin" type="password" inputmode="numeric"><button onclick="go()">查詢</button><p class="m" id="msg"></p></div>
 <div id="out"></div>
 <script>
-const SUPABASE_URL='https://YOUR-PROJECT.supabase.co',ANON_KEY='YOUR-ANON-KEY';
+const SUPABASE_URL='https://iujksyaebsyelnfnmpds.supabase.co',ANON_KEY='sb_publishable_fnwXWn47F2p_b0R99aCx9Q_i0hXFAgO';
 const $=i=>document.getElementById(i),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),n0=n=>Number(n).toLocaleString('en-US');
 async function go(){const no=$('no').value.trim(),pin=$('pin').value.trim();$('out').innerHTML='';
  if(SUPABASE_URL.includes('YOUR-PROJECT')){$('msg').textContent='網站尚未設定：請把 student.html 最上面的 URL 和 key 換成自己的';return}if(!no||!pin){$('msg').textContent='請輸入座號和 PIN';return}$('msg').textContent='查詢中…';
